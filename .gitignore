@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.DS_Store
+__pycache__
+venv
+*.pyc
+ai_services/venv
+mobile/node_modules
+dashboard/node_modules
+backend/node_modules
+.expo

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  database:
+    image: mongo:6.0
+    container_name: ageshield_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: ageshield_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://database:27017/ageshield
+      - JWT_SECRET=production_docker_secret
+    depends_on:
+      - database
+
+  ai_engine:
+    build: ./ai_services
+    container_name: ageshield_ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai_services:/app
+
+  dashboard:
+    build: ./dashboard
+    container_name: ageshield_dashboard
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development # Uses dev server for Vite viewing within container mapping
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: ageshield-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: backend
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+
+  - type: web
+    name: ageshield-ai
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: ai_services
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0

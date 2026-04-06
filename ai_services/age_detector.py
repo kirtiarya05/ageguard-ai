@@ -1,0 +1,29 @@
+from deepface import DeepFace
+import base64
+import os
+import cv2
+import numpy as np
+
+def estimate_age(image_base64: str):
+    try:
+        # Decode base64
+        img_data = base64.b64decode(image_base64)
+        np_arr = np.frombuffer(img_data, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        # Analyze
+        results = DeepFace.analyze(img, actions=['age'], enforce_detection=False)
+        age = results[0]['age']
+
+        # Determine Category
+        group = "CHILD"
+        if 11 <= age <= 14:
+            group = "EARLY_TEEN"
+        elif 15 <= age <= 17:
+            group = "TEEN"
+        elif age >= 18:
+            group = "ADULT"
+
+        return {"age": age, "group": group, "confidence": 0.9} # Dummy conf
+    except Exception as e:
+        return {"error": str(e)}
