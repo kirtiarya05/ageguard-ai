@@ -24,6 +24,35 @@ app.use('/api/auth', authRoutes);
 app.use('/api/parents', parentRoutes);
 app.use('/api/users', userRoutes);
 
+// AI Proxy Route
+app.post('/api/ai/predict_age', async (req, res) => {
+    try {
+        const response = await fetch(`${process.env.AI_SERVICE_URL}/predict_age`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'AI Service Unreachable', details: error.message });
+    }
+});
+
+app.post('/api/ai/classify_content', async (req, res) => {
+    try {
+        const response = await fetch(`${process.env.AI_SERVICE_URL}/classify_content`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'AI Service Unreachable', details: error.message });
+    }
+});
+
 // Serve React Web Dashboard
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*path', (req, res) => {
