@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ageshield-backend
+    name: ageguard-backend
     env: node
     plan: free
     buildCommand: npm install
@@ -13,9 +13,17 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: MONGO_URI
+        sync: false   # Set manually in Render dashboard: mongodb+srv://...
+      - key: AI_SERVICE_URL
+        sync: false   # Set to: https://ageguard-ai.onrender.com (after AI service deploys)
+      - key: FIREBASE_PROJECT_ID
+        sync: false   # Your Firebase project ID
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false   # Paste full service account JSON string here
 
   - type: web
-    name: ageshield-ai
+    name: ageguard-ai
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt

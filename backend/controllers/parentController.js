@@ -1,6 +1,7 @@
 const Restriction = require('../models/Restriction');
 const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
+const AgeProfile = require('../models/AgeProfile');
 
 exports.getDashboard = async (req, res) => {
     try {
@@ -138,6 +139,68 @@ exports.getRestrictions = async (req, res) => {
         const parentId = req.user ? req.user.id : 'demo-parent';
         const restriction = await Restriction.findOne({ parent: parentId, child: childId });
         res.json(restriction || { blockedApps: [], blockedCategories: [], blockedDomains: [], screenTimeLimitHours: 2 });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// 📍 Get all child locations (populated from DB)
+exports.getChildLocations = async (req, res) => {
+    try {
+        const parentId = req.user ? req.user.id : null;
+        const query = parentId ? { parentAccount: parentId, role: 'CHILD' } : { role: 'CHILD' };
+        const children = await User.find(query).select('userId location lastSeen isLocked');
+        res.json(children);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// 👶 Get all children linked to this parent
+exports.getChildren = async (req, res) => {
+    try {
+        const parentId = req.user.id;
+        const children = await User.find({ parentAccount: parentId, role: 'CHILD' })
+            .select('_id userId email isLocked lastSeen location');
+        res.json(children);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// 📊 Weekly usage report for a child
+exports.getReport = async (req, res) => {
+    try {
+        const { childId } = req.params;
+        const parentId = req.user.id;
+        const child = await User.findOne({ _id: childId, parentAccount: parentId }).select('userId');
+        if (!child) return res.status(403).json({ message: 'Not your child account' });
+
+        const restriction = await Restriction.findOne({ parent: parentId, child: childId });
+        const recentLogs = await ActivityLog.find({ user: childId })
+            .sort({ timestamp: -1 }).limit(100)
+            .select('action content riskScore blocked timestamp');
+
+        const totalBlocked = recentLogs.filter(l => l.blocked).length;
+        const totalEvents  = recentLogs.length;
+        const avgRisk      = recentLogs.length
+            ? Math.round(recentLogs.reduce((s, l) => s + (l.riskScore || 0), 0) / recentLogs.length)
+            : 0;
+
+        const blockedMap = {};
+        recentLogs.filter(l => l.blocked).forEach(l => {
+            blockedMap[l.content] = (blockedMap[l.content] || 0) + 1;
+        });
+        const topBlocked = Object.entries(blockedMap)
+            .sort((a, b) => b[1] - a[1]).slice(0, 5)
+            .map(([content, count]) => ({ content, count }));
+
+        res.json({
+            childId, childName: child.userId,
+            totalEvents, totalBlocked, avgRisk, topBlocked,
+            screenTimeLimitHours: restriction?.screenTimeLimitHours || 2,
+            recentLogs: recentLogs.slice(0, 20),
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

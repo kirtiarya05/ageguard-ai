@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema({
     },
     parentAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     isLocked: { type: Boolean, default: false }, // Set by parent via lockDevice API
+    fcmToken: { type: String },  // Firebase Cloud Messaging push token
     location: {
         latitude: { type: Number },
         longitude: { type: Number },

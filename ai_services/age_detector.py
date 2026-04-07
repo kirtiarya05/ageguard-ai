@@ -14,6 +14,8 @@ def estimate_age(image_base64: str):
         # Analyze
         results = DeepFace.analyze(img, actions=['age'], enforce_detection=False)
         age = results[0]['age']
+        # Use DeepFace's face confidence if available
+        confidence = results[0].get('face_confidence', 0.90)
 
         # Determine Category
         group = "CHILD"
@@ -24,6 +26,6 @@ def estimate_age(image_base64: str):
         elif age >= 18:
             group = "ADULT"
 
-        return {"age": age, "group": group, "confidence": 0.9} # Dummy conf
+        return {"age": age, "group": group, "confidence": round(float(confidence), 2)}
     except Exception as e:
         return {"error": str(e)}

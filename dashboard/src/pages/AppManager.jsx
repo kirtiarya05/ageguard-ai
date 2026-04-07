@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Smartphone, Plus, Trash2, Shield, CheckCircle, XCircle } from 'lucide-react';
 import { updateBlockedApps } from '../services/api';
+import { useChild } from '../components/ChildContext';
+
 
 // Master catalog of common apps that can be toggled
 const APP_CATALOG = [
@@ -25,15 +27,17 @@ const RISK_COLORS = {
 };
 
 const AppManager = () => {
-  const [blockedApps, setBlockedApps] = useState(
-    ['com.zhiliaoapp.musically', 'com.snapchat.android', 'com.reddit.frontpage']
-  );
+  const { activeChild } = useChild() || {};
+  const childId = activeChild?._id || 'child-demo';
+
   const [customApp, setCustomApp] = useState('');
   const [filter, setFilter] = useState('All');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
-  // For demo purposes, use a placeholder childId
-  const childId = localStorage.getItem('childId') || 'child-demo';
+  const [blockedApps, setBlockedApps] = useState(
+    ['com.zhiliaoapp.musically', 'com.snapchat.android', 'com.reddit.frontpage']
+  );
+
 
   const toggleApp = (pkg) => {
     setBlockedApps(prev =>
