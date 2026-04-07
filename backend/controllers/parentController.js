@@ -1,5 +1,6 @@
 const Restriction = require('../models/Restriction');
 const ActivityLog = require('../models/ActivityLog');
+const User = require('../models/User');
 
 exports.getDashboard = async (req, res) => {
     try {
@@ -7,8 +8,6 @@ exports.getDashboard = async (req, res) => {
         const parent = await User.findById(parentId);
 
         const isSubscribed = parent.subscription && parent.subscription.status === 'active';
-        
-        // If not subscribed, limit to last 2 logs and show "LOCKED" state
         const logLimit = isSubscribed ? 50 : 2;
 
         const logs = await ActivityLog.find()
@@ -40,11 +39,7 @@ exports.updateSubscription = async (req, res) => {
         else if (plan === 'yearly') expiryDate.setFullYear(expiryDate.getFullYear() + 1);
 
         const user = await User.findByIdAndUpdate(parentId, {
-            subscription: {
-                status: 'active',
-                plan,
-                expiry: expiryDate
-            }
+            subscription: { status: 'active', plan, expiry: expiryDate }
         }, { new: true });
 
         res.json(user.subscription);
@@ -64,7 +59,57 @@ exports.updateRules = async (req, res) => {
             { new: true, upsert: true }
         );
 
+        // ✅ Emit real-time event to child device — no more polling lag!
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user-${childId}`).emit('rules-updated', {
+                blockedCategories,
+                blockedDomains,
+                screenTimeLimitHours,
+                updatedAt: new Date()
+            });
+            console.log(`📡 Rules pushed to device user-${childId}`);
+        }
+
         res.json(restriction);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// 🚨 New: Emergency Lockdown — instantly locks a child's device
+exports.lockDevice = async (req, res) => {
+    try {
+        const { childId, locked } = req.body;
+        const io = req.app.get('io');
+
+        if (io) {
+            io.to(`user-${childId}`).emit('emergency-lockdown', {
+                locked: locked !== false, // default true
+                message: locked !== false
+                    ? '🔒 Your device has been locked by your parent.'
+                    : '🔓 Device lockdown has been lifted.',
+                timestamp: new Date()
+            });
+            console.log(`${locked ? '🔒' : '🔓'} Lockdown signal sent to device user-${childId}`);
+        }
+
+        // Persist lock state
+        await User.findByIdAndUpdate(childId, { isLocked: locked !== false });
+
+        res.json({ success: true, childId, locked: locked !== false });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// 📍 New: Get all children location data for geofencing map
+exports.getChildLocations = async (req, res) => {
+    try {
+        const parentId = req.user.id;
+        const children = await User.find({ parentAccount: parentId, role: 'CHILD' })
+            .select('userId email location lastSeen');
+        res.json(children);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

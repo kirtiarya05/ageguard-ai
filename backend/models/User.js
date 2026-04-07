@@ -13,6 +13,13 @@ const UserSchema = new mongoose.Schema({
         expiry: { type: Date }
     },
     parentAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    isLocked: { type: Boolean, default: false }, // Set by parent via lockDevice API
+    location: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String }
+    },
+    lastSeen: { type: Date },
     createdAt: { type: Date, default: Date.now },
 });
 
