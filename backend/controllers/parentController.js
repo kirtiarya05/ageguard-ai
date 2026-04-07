@@ -103,13 +103,41 @@ exports.lockDevice = async (req, res) => {
     }
 };
 
-// 📍 New: Get all children location data for geofencing map
-exports.getChildLocations = async (req, res) => {
+// 📱 New: Update blocked apps list — instantly pushed to child device
+exports.updateBlockedApps = async (req, res) => {
     try {
-        const parentId = req.user.id;
-        const children = await User.find({ parentAccount: parentId, role: 'CHILD' })
-            .select('userId email location lastSeen');
-        res.json(children);
+        const { childId, blockedApps } = req.body;
+        const parentId = req.user ? req.user.id : 'demo-parent';
+
+        await Restriction.findOneAndUpdate(
+            { parent: parentId, child: childId },
+            { blockedApps, updatedAt: new Date() },
+            { new: true, upsert: true }
+        );
+
+        // Push to child device instantly via socket
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user-${childId}`).emit('apps-blocked', {
+                blockedApps,
+                updatedAt: new Date()
+            });
+            console.log(`📱 App block list pushed to user-${childId}:`, blockedApps);
+        }
+
+        res.json({ success: true, childId, blockedApps });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// 📋 Get current restrictions for a child
+exports.getRestrictions = async (req, res) => {
+    try {
+        const { childId } = req.query;
+        const parentId = req.user ? req.user.id : 'demo-parent';
+        const restriction = await Restriction.findOne({ parent: parentId, child: childId });
+        res.json(restriction || { blockedApps: [], blockedCategories: [], blockedDomains: [], screenTimeLimitHours: 2 });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
