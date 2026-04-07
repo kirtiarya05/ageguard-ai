@@ -2,12 +2,17 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
-    email: { type: String, required: true, unique: true },
-    password: { type: String }, // Optional if Google OAuth
-    googleId: { type: String },
+    email: { type: String, unique: true, sparse: true }, // Sparse allows multiple nulls
+    userId: { type: String, unique: true, sparse: true }, // Mandatory for CHILD
+    parentEmail: { type: String }, // Provided by child to link
+    password: { type: String }, 
     role: { type: String, enum: ['PARENT', 'CHILD', 'ADMIN'], required: true },
-    isVerified: { type: Boolean, default: false },
-    parentAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // If child, point to parent
+    subscription: {
+        status: { type: String, enum: ['active', 'inactive'], default: 'inactive' },
+        plan: { type: String, enum: ['monthly', 'bi-monthly', 'yearly', 'none'], default: 'none' },
+        expiry: { type: Date }
+    },
+    parentAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdAt: { type: Date, default: Date.now },
 });
 

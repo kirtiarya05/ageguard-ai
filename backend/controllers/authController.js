@@ -10,17 +10,37 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
     try {
-        const { email, password, role } = req.body;
-        const userExists = await User.findOne({ email });
+        const { email, password, role, userId, parentEmail } = req.body;
+        
+        if (role === 'CHILD' && !userId) {
+            return res.status(400).json({ message: 'User ID is mandatory for child accounts' });
+        }
+
+        const query = role === 'CHILD' ? { userId } : { email };
+        const userExists = await User.findOne(query);
         
         if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        const user = await User.create({ email, password, role });
+        let parentAccount = null;
+        if (role === 'CHILD' && parentEmail) {
+            const parent = await User.findOne({ email: parentEmail, role: 'PARENT' });
+            if (parent) parentAccount = parent._id;
+        }
+
+        const user = await User.create({ 
+            email, 
+            password, 
+            role, 
+            userId, 
+            parentEmail,
+            parentAccount 
+        });
 
         res.status(201).json({
             _id: user.id,
+            userId: user.userId,
             email: user.email,
             role: user.role,
             token: generateToken(user._id),
@@ -32,15 +52,18 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, userId, password } = req.body;
 
-        const user = await User.findOne({ email });
+        const query = userId ? { userId } : { email };
+        const user = await User.findOne(query);
         
         if (user && (await bcrypt.compare(password, user.password))) {
             res.json({
                 _id: user.id,
+                userId: user.userId,
                 email: user.email,
                 role: user.role,
+                subscription: user.subscription,
                 token: generateToken(user._id),
             });
         } else {
